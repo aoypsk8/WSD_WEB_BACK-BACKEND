@@ -4,8 +4,8 @@ const connectToMySQL = require('../utils/db');
 const multerConfig = require('../utils/multer');
 const cloudinary = require('../utils/couldinary');
 
-class EmployeeController {
-    static async loginEmployee(req, res) {
+class AuthCustomerController {
+    static async loginCustomer(req, res) {
         try {
             const connection = connectToMySQL();
             const { phoneNumber, password } = req.body;
@@ -14,7 +14,7 @@ class EmployeeController {
                     message: "ກະລຸນາປ້ອນຂໍ້ມູນກ່ອນ !",
                 });
             }
-            const queryUserLogin = 'SELECT * FROM tb_employee WHERE Phone_Number = ?';
+            const queryUserLogin = 'SELECT * FROM tb_customers WHERE Phone_Number = ?';
             connection.query(queryUserLogin, [phoneNumber], async (error, results) => {
                 if (error) {
                     return res.json({
@@ -54,20 +54,19 @@ class EmployeeController {
         }
     }
 
-    static async registerEmployee(req, res) {
+    static async registerCustomer(req, res) {
         try {
             const connection = connectToMySQL();
-            const { Emp_ID, First_name, Last_name, gender, Roles, Village, District, Province, Phone_Number, Password } = req.body;
-            console.log(req.body);
+            const { First_name, Last_name, Phone_Number, Address, Password } = req.body;
             const Profile_img = req.file ? req.file.path : null;
-    
-            if (  !First_name || !Last_name || !gender || !Roles || !Village || !District || !Province || !Phone_Number || !Password) {
+
+            if (!First_name || !Last_name || !Phone_Number || !Address || !Password) {
                 return res.json({
                     message: "ກະລຸນາປ້ອນຂໍ້ມູນກ່ອນ !",
                 });
             } else {
                 // Check if phone number already exists
-                const checkPhoneNumberQuery = 'SELECT * FROM tb_employee WHERE Phone_Number = ?';
+                const checkPhoneNumberQuery = 'SELECT * FROM tb_customers WHERE Phone_Number = ?';
                 connection.query(checkPhoneNumberQuery, [Phone_Number], async (error, results) => {
                     if (error) {
                         return res.json({
@@ -79,34 +78,34 @@ class EmployeeController {
                             message: "ເບີໂທລະສັບນີ້ມີແລ້ວ!",
                         });
                     }
-                    // Insert new employee if phone number doesn't exist
-                    const insertEmployee = `INSERT INTO tb_employee (Emp_ID, First_name, Last_name, gender, Roles, Village, District, Province, Phone_Number, Profile_img, Password) VALUES (?,?,?,?,?,?,?,?,?,?,?)`;
+                    // Insert new user if phone number doesn't exist
+                    const insertUser = `INSERT INTO tb_customers (First_name, Last_name, Phone_Number, Profile_img, Address, Password) VALUES (?,?,?,?,?,?)`;
                     if (Profile_img) {
-                        // Upload image
+                        //upload image
                         await cloudinary.uploader.upload(Profile_img);
                         const result = await cloudinary.uploader.upload(Profile_img);
                         const imageUrl = result.secure_url;
-                        connection.query(insertEmployee, [Emp_ID, First_name, Last_name, gender, Roles, Village, District, Province, Phone_Number, imageUrl || "", Password], async (error, results) => {
+                        connection.query(insertUser, [First_name, Last_name, Phone_Number, imageUrl || "", Address, Password], async (error, results) => {
                             if (error) {
-                                console.log(error);
                                 return res.json({
                                     message: "ເກີດຂໍ້ຜິດພາດ",
                                 });
                             }
-                            const employee = results[0];
+                            const user = results[0];
                             // Close MySQL connection
                             connection.end();
                             return res.json({
                                 status: "ok",
                                 message: "ລົງທະບຽນສຳເລັດ",
-                                data: employee,
+                                data: user,
                             });
                         });
-                    } else {
+                    }else{
                         return res.json({
                             message: "ກະລຸນາເພີ່ມຮູບພາບ",
                         });
                     }
+                    
                 });
             }
         } catch (error) {
@@ -115,16 +114,16 @@ class EmployeeController {
             });
         }
     }
-    
-    static async deleteEmployee(req, res) {
+
+    static async deleteCustomer(req, res) {
         try {
             const connection = connectToMySQL();
-            const { Emp_ID } = req.body;
-            if (!Emp_ID) {
+            const { cus_ID } = req.body;
+            if (!cus_ID) {
                 return res.json({ message: "ກະລຸນາປ້ອນ ID !" });
             }
-            const deleteUserQuery = 'DELETE FROM tb_employee WHERE Emp_ID = ?';
-            connection.query(deleteUserQuery, [Emp_ID], (error, results) => {
+            const deleteUserQuery = 'DELETE FROM tb_customers WHERE Cus_ID = ?';
+            connection.query(deleteUserQuery, [cus_ID], (error, results) => {
                 if (error) {
                     return res.json({ message: "ເກີດຂໍ້ຜິດພາດ" });
                 }
@@ -141,10 +140,10 @@ class EmployeeController {
             return res.json({ message: error.message });
         }
     }
-    static async getAllEmployee(req, res) {
+    static async getAllCostomers(req, res) {
         try {
             const connection = connectToMySQL();
-            const getAllUsersQuery = 'SELECT * FROM tb_employee';
+            const getAllUsersQuery = 'SELECT * FROM tb_customers';
             connection.query(getAllUsersQuery, (error, results) => {
                 if (error) {
                     return res.json({ message: "ເກີດຂໍ້ຜິດພາດ" });
@@ -160,15 +159,15 @@ class EmployeeController {
             return res.json({ message: error.message });
         }
     }
-    static async getEmployeeByID(req, res) {
+    static async getCustomerByID(req, res) {
         try {
             const connection = connectToMySQL();
-            const { Emp_ID } = req.params;
-            if (!Emp_ID) {
+            const { Cus_ID } = req.params;
+            if (!Cus_ID) {
                 return res.json({ message: "ກະລຸນາປ້ອນ Phone Number !" });
             }
-            const getUserQuery = 'SELECT * FROM tb_employee WHERE Emp_ID = ?';
-            connection.query(getUserQuery, [Emp_ID], (error, results) => {
+            const getUserQuery = 'SELECT * FROM tb_customers WHERE Cus_ID = ?';
+            connection.query(getUserQuery, [Cus_ID], (error, results) => {
                 if (error) {
                     return res.json({ message: "ເກີດຂໍ້ຜິດພາດ" });
                 }
@@ -186,20 +185,22 @@ class EmployeeController {
             return res.json({ message: error.message });
         }
     }
-    
-    static async updateEmployee(req, res) {
+
+
+
+    static async updateCustomer(req, res) {
         try {
             const connection = connectToMySQL();
-            const { Emp_ID } = req.params;
-            const { First_name, Last_name, gender, Roles, Village, District, Province, Phone_Number, Password } = req.body;
+            const { Cus_ID } = req.params;
+            const { First_name, Last_name, Phone_Number, Address, Password } = req.body;
             const Profile_img = req.file ? req.file.path : null;
 
-            if ( !First_name || !Last_name || !gender || !Roles || !Village || !District || !Province || !Phone_Number || !Password ) {
+            if (!Cus_ID || !First_name || !Last_name || !Phone_Number || !Address || !Password) {
                 return res.json({ message: "ກະລຸນາປ້ອນຂໍ້ມູນທີ່ຕ້ອງການອັບເດດ!" });
             }
 
-            let updateQuery = 'UPDATE tb_employee SET First_name = ?, Last_name = ?, gender = ?, Roles = ?, Village = ?, District = ?, Province = ?, Phone_Number = ?, Password=?';
-            let queryParams = [First_name, Last_name, gender, Roles, Village, District, Province, Phone_Number, Password];
+            let updateQuery = 'UPDATE tb_customers SET First_name = ?, Last_name = ?, Phone_Number = ?, Address = ?, Password = ?';
+            let queryParams = [First_name, Last_name, Phone_Number, Address, Password];
 
             if (Profile_img) {
                 const result = await cloudinary.uploader.upload(Profile_img);
@@ -208,8 +209,8 @@ class EmployeeController {
                 queryParams.push(imageUrl);
             }
 
-            updateQuery += ' WHERE Emp_ID = ?';
-            queryParams.push(Emp_ID);
+            updateQuery += ' WHERE Cus_ID = ?';
+            queryParams.push(Cus_ID);
 
             connection.query(updateQuery, queryParams, (error, results) => {
                 if (error) {
@@ -230,9 +231,9 @@ class EmployeeController {
     }
 
 
-    
+
+
 }
 
-
-module.exports = EmployeeController;
+module.exports = AuthCustomerController;
 

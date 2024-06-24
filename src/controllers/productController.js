@@ -1,150 +1,183 @@
+const multer = require('multer');
+const MiddleWare = require('../middleware/authMiddleware');
 const connectToMySQL = require('../utils/db');
-const crypto = require('crypto');
+const multerConfig = require('../utils/multer');
+const cloudinary = require('../utils/couldinary');
+
 class ProductController {
-    //======================= create =============================
-    static async productCreate(req, res) {
+    static async createProduct(req, res) {
         try {
             const connection = connectToMySQL();
-            const { productname, unit, price } = req.body;
-            if (!productname || !unit || !price) {
-                return res.json({
-                    message: "ກະລຸນາປ້ອນຂໍ້ມູນກ່ອນ !",
-                });
+            const { Product_Type_ID, Product_Name, Description, Price, ProductQty, Promotion, Unit } = req.body;
+            const Product_img = req.file ? req.file.path : null;
+            
+            // Validation checks for required fields
+            if (!Product_Type_ID || !Product_Name || !Description || !Price || !ProductQty || !Unit) {
+                return res.json({ message: "Please provide all required fields!" });
             }
-            const barCode = crypto.randomBytes(10).toString('hex');
-            const queryProduct = `INSERT INTO tb_product (barcode,product_name,unit_id,price_cost) VALUES (?,?,?,?)`;
-            connection.query(queryProduct, [barCode, productname, unit, price], async (error, result) => {
+            // SQL query to insert a new product
+            const insertProductQuery = `INSERT INTO tb_products (Product_Type_ID, Product_Name, Description, Price, ProductQty, Promotion, Unit, Product_img) VALUES (?, ?, ?, ?, ?, ?, ?,  ?)`;
+            
+            if (Product_img) {
+                // Upload image to cloudinary
+                const result = await cloudinary.uploader.upload(Product_img);
+                const imageUrl = result.secure_url;
+                
+                // Execute the SQL query to insert the product into the database
+                connection.query(insertProductQuery, [Product_Type_ID, Product_Name, Description, Price, ProductQty, Promotion, Unit, imageUrl || ""], async (error, results) => {
+                    if (error) {
+                        return res.json({ message: "Failed to create product", error: error });
+                    }
+                    
+                    // Retrieve the newly inserted product data
+                    const data = results[0];
+                    connection.end();
+                    
+                    // Respond with success message and data
+                    return res.json({ status: "ok", message: "ສ້າງສຳເລັດ", data: data });
+                });
+            } else {
+                return res.json({ message: "Please upload a product image" });
+            }
+        } catch (error) {
+            return res.json({ message: error.message });
+        }
+    }
+    
+    static async deleteProduct(req, res) {
+        try {
+            const connection = connectToMySQL();
+            const { Product_ID } = req.body;
+            
+            if (!Product_ID) {
+                return res.json({ message: "Please provide the Product ID" });
+            }
+            
+            // SQL query to delete a product
+            const deleteProductQuery = 'DELETE FROM tb_products WHERE Product_ID = ?';
+            
+            // Execute the delete query
+            connection.query(deleteProductQuery, [Product_ID], (error, results) => {
                 if (error) {
-                    return res.json({
-                        message: "ເກີດຂໍ້ຜິດພາດ",
-                    });
+                    return res.json({ message: "Failed to delete product", error: error });
                 }
+                
+                // Check if any rows were affected (product deleted)
+                if (results.affectedRows === 0) {
+                    return res.json({ message: "Product not found" });
+                }
+                
+                connection.end();
+                return res.json({ status: "ok", message: "Product deleted successfully" });
+            });
+        } catch (error) {
+            return res.json({ message: error.message });
+        }
+    }
+    
+    static async getAllProducts(req, res) {
+        try {
+            const connection = connectToMySQL();
+            const getAllProductsQuery = 
+            'SELECT p.* ,pt.Product_Type_Name FROM tb_products AS p LEFT JOIN tb_products_type AS pt ON p.Product_Type_ID = pt.Product_Type_ID ORDER BY RAND()';
+            
+            // Execute query to get all products
+            connection.query(getAllProductsQuery, (error, results) => {
+                if (error) {
+                    return res.json({ message: "Failed to fetch products", error: error });
+                }
+                
+                connection.end();
+                return res.json({ status: "ok", message: "All products fetched successfully", data: results });
+            });
+        } catch (error) {
+            return res.json({ message: error.message });
+        }
+    }
+
+    static async updateProduct(req, res) {
+        try {
+            const connection = connectToMySQL();
+            const { Product_ID } = req.params;
+            const { Product_Type_ID, Product_Name, Description, Price, ProductQty, Promotion, Unit } = req.body;
+            const Profile_img = req.file ? req.file.path : null;
+
+            if ( !Product_Type_ID || !Product_Name || !Description || !Price || !Price || !ProductQty || !Promotion || !Unit  ) {
+                return res.json({ message: "ກະລຸນາປ້ອນຂໍ້ມູນທີ່ຕ້ອງການອັບເດດ!" });
+            }
+
+            let updateQuery = 'UPDATE tb_products SET Product_Type_ID=?, Product_Name=?, Description=?, Price=?, ProductQty=?, Promotion=?, Unit =? ';
+            let queryParams = [Product_Type_ID, Product_Name, Description, Price, ProductQty, Promotion, Unit];
+
+            if (Profile_img) {
+                const result = await cloudinary.uploader.upload(Profile_img);
+                const imageUrl = result.secure_url;
+                updateQuery += ', Product_img = ?';
+                queryParams.push(imageUrl);
+            }
+
+            updateQuery += ' WHERE Product_ID = ?';
+            queryParams.push(Product_ID);
+
+            connection.query(updateQuery, queryParams, (error, results) => {
+                if (error) {
+                    return res.json({ message: "ເກີດຂໍ້ຜິດພາດ" });
+                }
+                if (results.affectedRows === 0) {
+                    return res.json({ message: "ບໍ່ພົບ ID !" });
+                }
+                connection.end();
                 return res.json({
                     status: "ok",
-                    message: "ສ້າງສິນຄ້າສຳເລັດ",
+                    message: "ອັບເດດສຳເລັດ",
                 });
-            })
-        } catch (error) {
-            return res.json({
-                message: error.message,
             });
+        } catch (error) {
+            return res.json({ message: error.message });
         }
     }
-    //======================= Update =============================
-    static async productUpdate(req, res) {
+    static async getNewestProducts(req, res) {
         try {
             const connection = connectToMySQL();
-            const { id, productname, unit, price } = req.body;
-            if (!productname || !unit || !price) {
-                return res.json({
-                    message: "ກະລຸນາປ້ອນຂໍ້ມູນກ່ອນ !",
-                });
-            }
-            const getProduct = `SELECT * FROM tb_product where id=?`;
-            connection.query(getProduct, [id], async (error, result) => {
-                if (error) {
-                    return res.json({
-                        message: "ເກີດຂໍ້ຜິດພາດ",
-                    });
-                }
-                if (!result || result.length === 0) {
-                    return res.json({
-                        message: "ບໍ່ພົບສິນຄ້າ",
-                    });
-                }
-                const queryProduct = `UPDATE tb_product SET product_name =? ,unit_id = ? ,price_cost = ? where id=?`;
-                connection.query(queryProduct, [productname, unit, price, id], async (error, result) => {
-                    if (error) {
-                        return res.json({
-                            message: "ເກີດຂໍ້ຜິດພາດ",
-                        });
-                    }
-                    return res.json({
-                        status: "ok",
-                        message: "ອັບເດດສິນຄ້າສຳເລັດ",
-                    });
-                })
-            })
-        } catch (error) {
-            return res.json({
-                message: error.message,
-            });
-        }
-    }
-    //======================= delete =============================
-    static async productDelete(req, res) {
-        try {
-            const connection = connectToMySQL();
-            const { id } = req.body;
-            if (!id) {
-                return res.json({
-                    message: "ກະລຸນາປ້ອນຂໍ້ມູນກ່ອນ !",
-                });
-            }
-            const getProduct = `SELECT * FROM tb_product where id=?`;
+            
+            const getNewestProductsQuery = 'SELECT p.* ,pt.Product_Type_Name FROM tb_products AS p LEFT JOIN tb_products_type AS pt ON p.Product_Type_ID = pt.Product_Type_ID ORDER BY Product_ID DESC LIMIT 5';
 
-            connection.query(getProduct, [id], async (error, result) => {
+            // Execute query to get the newest products
+            connection.query(getNewestProductsQuery, (error, results) => {
                 if (error) {
-                    return res.json({
-                        message: "ເກີດຂໍ້ຜິດພາດ",
-                    });
+                    return res.json({ message: "Failed to fetch newest products", error: error });
                 }
-                if (!result || result.length === 0) {
-                    return res.json({
-                        message: "ບໍ່ພົບສິນຄ້າ",
-                    });
-                }
-                const queryProduct = `DELETE FROM tb_product where id=?`;
-                connection.query(queryProduct, [id], async (error, result) => {
-                    if (error) {
-                        if (error['code'] == "ER_ROW_IS_REFERENCED_2") {
-                            return res.json({
-                                message: "ບໍ່ສາມາດລົບສິນຄ້າໄດ້ ເນືອງຈາກມີການໃຊ້ງານຢູ່",
-                            });
-                        }
-                        else {
-                            return res.json({
-                                message: "ເກີດຂໍ້ຜິດພາດ",
-                            });
-                        }
-                    }
-                    return res.json({
-                        status: "ok",
-                        message: "ລົບສິນຄ້າສຳເລັດ",
-                    });
-                })
-            })
 
-        } catch (error) {
-            return res.json({
-                message: error.message,
+                connection.end();
+                return res.json({ status: "ok", message: "Newest products fetched successfully", data: results });
             });
-        }
-    }
-    //======================= Get all =============================
-    static async productGetAll(req, res) {
-        try {
-            const connection = connectToMySQL();
-            const queryUnit = `SELECT * FROM tb_product `;
-            connection.query(queryUnit, async (error, result) => {
-                if (error) {
-                    return res.json({
-                        message: "ເກີດຂໍ້ຜິດພາດ",
-                    });
-                }
-                return res.json({
-                    status: "ok",
-                    message: "ສຳເລັດ",
-                    data: result,
-                });
-            })
         } catch (error) {
-            return res.json({
-                message: error.message,
-            });
+            return res.json({ message: error.message });
         }
     }
 
+    static async getAllByTypeProducts(req, res) {
+        try {
+            const connection = connectToMySQL();
+            const { Product_Type_ID } = req.params;
+            const getAllProductsQuery = 
+            `SELECT *  FROM tb_products WHERE Product_Type_ID =${Product_Type_ID}`;
+            
+            // Execute query to get all products
+            connection.query(getAllProductsQuery, (error, results) => {
+                if (error) {
+                    return res.json({ message: "Failed to fetch products", error: error });
+                }
+                
+                connection.end();
+                return res.json({ status: "ok", message: "All products fetched successfully", data: results });
+            });
+        } catch (error) {
+            return res.json({ message: error.message });
+        }
+    }
+
+    
 }
 
 module.exports = ProductController;

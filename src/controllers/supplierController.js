@@ -4,18 +4,18 @@ const connectToMySQL = require('../utils/db');
 const multerConfig = require('../utils/multer');
 const cloudinary = require('../utils/couldinary');
 
-class UnitController {
-    static async createUnit(req, res) {
+class SupplierController {
+    static async createSupplier(req, res) {
         try {
             const connection = connectToMySQL();
-            const { Unit_Name } = req.body;
-            if (!Unit_Name) {
+            const { First_name, Phone_Number, Village, District, Province } = req.body;
+            if (!First_name || !Phone_Number || !Village || !District || !Province) {
                 return res.json({
                     message: "ກະລຸນາປ້ອນຂໍ້ມູນກ່ອນ !",
                 });
             }
-            const insertUnit = `INSERT INTO tb_unit (Unit_Name) VALUES (?)`;
-            connection.query(insertUnit, [Unit_Name], async (error, results) => {
+            const insertQuery = `INSERT INTO tb_suppliers (First_name,Phone_Number,Village,District,Province) VALUES (?,?,?,?,?)`;
+            connection.query(insertQuery, [First_name, Phone_Number, Village, District, Province], async (error, results) => {
                 if (error) {
                     return res.json({
                         message: "Database error",
@@ -26,7 +26,7 @@ class UnitController {
                 connection.end();
                 return res.json({
                     status: "ok",
-                    message: "Unit created successfully",
+                    message: "Supplier created successfully",
                     data: data,
                 });
             });
@@ -35,27 +35,27 @@ class UnitController {
         }
     }
 
-    static async deleteUnit(req, res) {
+    static async deleteSupplier(req, res) {
         try {
             const connection = connectToMySQL();
-            const { Unit_ID } = req.body;
-            if (!Unit_ID) {
+            const { Sl_ID } = req.body;
+            if (!Sl_ID) {
                 return res.json({
                     message: "ກະລຸນາປ້ອນຂໍ້ມູນກ່ອນ !",
                 });
             }
-            const deleteQuery = 'DELETE FROM tb_unit WHERE Unit_ID = ?';
-            connection.query(deleteQuery, [Unit_ID], (error, results) => {
+            const deleteQuery = 'DELETE FROM tb_suppliers WHERE Sl_ID = ?';
+            connection.query(deleteQuery, [Sl_ID], (error, results) => {
                 if (error) {
                     return res.json({ message: "Database error" });
                 }
                 if (results.affectedRows === 0) {
-                    return res.json({ message: "Unit ID not found!" });
+                    return res.json({ message: "Sl_ID ID not found!" });
                 }
                 connection.end();
                 return res.json({
                     status: "ok",
-                    message: "Unit deleted successfully",
+                    message: "Supplier deleted successfully",
                 });
             });
         } catch (error) {
@@ -63,18 +63,18 @@ class UnitController {
         }
     }
 
-    static async getAllUnits(req, res) {
+    static async getAllSupplier(req, res) {
         try {
             const connection = connectToMySQL();
-            const getAllUnitsQuery = 'SELECT * FROM tb_unit';
-            connection.query(getAllUnitsQuery, (error, results) => {
+            const getAllQuery = 'SELECT * FROM tb_suppliers';
+            connection.query(getAllQuery, (error, results) => {
                 if (error) {
                     return res.json({ message: "Database error" });
                 }
                 connection.end();
                 return res.json({
                     status: "ok",
-                    message: "All units retrieved successfully",
+                    message: "All supplier retrieved successfully",
                     data: results,
                 });
             });
@@ -83,30 +83,32 @@ class UnitController {
         }
     }
 
-    static async updateUnit(req, res) {
+
+    static async updateSupplier(req, res) {
         try {
             const connection = connectToMySQL();
-            const { Unit_ID } = req.params;
-            const { Unit_Name } = req.body;
+            const { Sl_ID } = req.params;
+            const { First_name, Phone_Number, Village, District, Province } = req.body;
+            console.log(req.body);
 
-            if (!Unit_Name) {
+            if (!First_name || !Phone_Number || !Village || !District || !Province) {
                 return res.json({
                     message: "ກະລຸນາປ້ອນຂໍ້ມູນກ່ອນ !",
                 });
             }
 
-            const updateQuery = 'UPDATE tb_unit SET Unit_Name = ? WHERE Unit_ID = ?';
-            connection.query(updateQuery, [Unit_Name, Unit_ID], (error, results) => {
+            const updateQuery = 'UPDATE tb_suppliers SET First_name  = ? ,Phone_Number  = ? ,Village  = ? ,District  = ? ,Province = ? WHERE Sl_ID = ?';
+            connection.query(updateQuery, [First_name, Phone_Number, Village, District, Province, Sl_ID], (error, results) => {
                 if (error) {
                     return res.json({ message: "Database error" });
                 }
                 if (results.affectedRows === 0) {
-                    return res.json({ message: "Unit ID not found!" });
+                    return res.json({ message: "Supplier ID not found!" });
                 }
                 connection.end();
                 return res.json({
                     status: "ok",
-                    message: "Unit updated successfully",
+                    message: "Supplier updated successfully",
                 });
             });
         } catch (error) {
@@ -115,4 +117,4 @@ class UnitController {
     }
 }
 
-module.exports = UnitController;
+module.exports = SupplierController;

@@ -3,7 +3,7 @@ const jwt = require('jsonwebtoken')
 class MiddleWare{
     static GenerateToken = async (data) => {
         try {
-            var token = jwt.sign(data, process.env.JWT_SECRET_KEY, { expiresIn: "2 days", });
+            var token = jwt.sign(data, process.env.JWT_SECRET_KEY, { expiresIn: "1 days", });
             return token;
         } catch (error) {
             throw error;
@@ -11,7 +11,7 @@ class MiddleWare{
     };
     static GenerateTokenAdmin = async (data) => {
         try {
-            var token = jwt.sign(data, process.env.JWT_SECRET_KEY, { expiresIn: "2 days", });
+            var token = jwt.sign(data, process.env.JWT_SECRET_KEY, { expiresIn: "1 days", });
             return token;
         } catch (error) {
             throw error;
